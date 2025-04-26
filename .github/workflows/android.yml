@@ -22,8 +22,8 @@ jobs:
         fetch-depth: 0
     - name: Build Android debug APK
       run: |
-        sudo -u user python3 -m buildozer --version
-        sudo -u user python3 -m buildozer -v android debug
+        python3 -m buildozer --version
+        python3 -m buildozer -v android debug
     #- name: Upload APK
     #  uses: actions/upload-artifact@v4
     #  with:
