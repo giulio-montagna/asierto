@@ -22,7 +22,7 @@ jobs:
         fetch-depth: 0
     - name: Build Android debug APK
       run: |
-        sudo -u user which python3
+        sudo -u user find /home/user/.local/
         /home/user/.local/bin/python3 -m buildozer --version
         /home/user/.local/bin/python3 -m buildozer -v android debug
     #- name: Upload APK
