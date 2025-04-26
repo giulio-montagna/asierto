@@ -1,0 +1,28 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: kivy/buildozer:latest
+      volumes:
+        - ${{ github.workspace }}:/home/user/hostcwd
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Build Android debug APK
+      run: |
+        buildozer --version
+        buildozer -v android debug
+    - name: Upload APK
+      uses: actions/upload-artifact@v2
+      with:
+        name: android-debug-apk
+        path: bin/myapp-0.1-debug.apk
