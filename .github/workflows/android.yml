@@ -10,21 +10,19 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/kivy/buildozer:latest
-      volumes:
-        - ${{ github.workspace }}:/home/user/hostcwd
+    #container:
+    #  image: ghcr.io/kivy/buildozer:latest
+    #  volumes:
+    #    - ${{ github.workspace }}:/home/user/hostcwd
 
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - name: Set permissions for workspace
-      run: sudo chown -R $(id -u):$(id -g) /home/user/hostcwd
-    - name: Build Android debug APK
-      run: |
-        buildozer --version
-        buildozer -v android debug
+    #- name: Build Android debug APK
+    #  run: |
+    #    buildozer --version
+    #    buildozer -v android debug
     #- name: Upload APK
     #  uses: actions/upload-artifact@v4
     #  with:
