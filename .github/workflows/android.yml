@@ -19,6 +19,8 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
+    - name: Set permissions for workspace
+      run: sudo chown -R $(id -u):$(id -g) /home/user/hostcwd
     - name: Build Android debug APK
       run: |
         buildozer --version
