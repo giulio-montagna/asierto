@@ -22,6 +22,7 @@ jobs:
         fetch-depth: 0
     - name: Build Android debug APK
       run: |
+        sudo -u user pip install buildozer
         sudo -u user buildozer --version
         sudo -u user buildozer -v android debug
     #- name: Upload APK
