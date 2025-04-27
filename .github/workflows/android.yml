@@ -23,13 +23,14 @@ jobs:
       - checkout
     container:
       image: docker://ghcr.io/kivy/buildozer:latest
+      options: --user root
       volumes:
         - ${{ github.workspace }}:/home/user/hostcwd
 
     steps:
     - name: Build Android debug APK
       run: |
-        python3 -m pip install buildozer
+        python3 -m pip install buildozer cython
         python3 -m buildozer --version
         python3 -m buildozer -v android debug
     #- name: Upload APK
