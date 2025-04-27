@@ -33,6 +33,7 @@ jobs:
         chown -R user:user /github 
         sudo -u user python3 -m pip install buildozer cython
         sudo -u user python3 -m buildozer --version
+        sudo -u user ls 
         sudo -u user python3 -m buildozer -v android debug
     #- name: Upload APK
     #  uses: actions/upload-artifact@v4
