@@ -30,9 +30,10 @@ jobs:
     steps:
     - name: Build Android debug APK
       run: |
-        python3 -m pip install buildozer cython
-        python3 -m buildozer --version
-        python3 -m buildozer -v android debug
+        chown -R user:user /github 
+        sudo -u user python3 -m pip install buildozer cython
+        sudo -u user python3 -m buildozer --version
+        sudo -u user python3 -m buildozer -v android debug
     #- name: Upload APK
     #  uses: actions/upload-artifact@v4
     #  with:
