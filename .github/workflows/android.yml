@@ -31,7 +31,7 @@ jobs:
     - name: Build Android prepare
       run: |
         chown -R user:user /github 
-        sudo -u user python3 -m buildozer --
+        sudo -u user python3 -m buildozer --version
         sudo -u user whoami
         find /home
         sudo -u user ls /home/user/hostcwd
