@@ -31,8 +31,9 @@ jobs:
     - name: Build Android debug APK
       run: |
         chown -R user:user /github 
-        sudo -u user python3 -m pip install buildozer cython
-        sudo -u user python3 -m buildozer --version
+        sudo -u user python3 -m buildozer --
+        sudo -u user whoami
+        find /home
         sudo -u user ls /home/user/hostcwd
         sudo -u user python3 -m buildozer -v android debug
     #- name: Upload APK
