@@ -16,19 +16,19 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-    - name: run buildozer via docker version
+    - name: install buildozer and cython
       run: |
-          docker run --rm -v ${{ github.workspace }}:/home/user/hostcwd ghcr.io/kivy/buildozer:latest --version
-    - name: recurively change the owner of /home/user/hostcwd/ to 1000:1000
+          sudo apt-get update
+          sudo apt-get install -y python3-pip
+          pip3 install --upgrade pip
+          pip3 install cython buildozer
+    - name: buildozer version
       run: |
-          docker run -u root --rm -v ${{ github.workspace }}:/home/user/hostcwd --entrypoint /bin/chown ghcr.io/kivy/buildozer:latest -R 1000:1000 /home/user/hostcwd/
-    - name: get user id of default user from buildozer image
+          buildozer --version
+    - name: run buildozer from within the github workspace folder
       run: |
-          docker run --rm -v ${{ github.workspace }}:/home/user/hostcwd --entrypoint /usr/bin/id ghcr.io/kivy/buildozer:latest
-    - name: run buildozer via docker
-      run: |
-          yes | docker run --rm -v ${{ github.workspace }}:/home/user/hostcwd ghcr.io/kivy/buildozer:latest -v android debug
-
+          cd ${{ github.workspace }}
+          yes | buildozer -v android debug
     #- name: Upload APK
     #  uses: actions/upload-artifact@v4
     #  with:
