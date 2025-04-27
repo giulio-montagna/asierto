@@ -8,24 +8,29 @@ on:
 
 jobs:
 
+  checkout:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
   build:
     runs-on: ubuntu-latest
+    needs:
+      - checkout
     container:
-      image: ghcr.io/kivy/buildozer:latest
-      options: --user root
+      image: docker://ghcr.io/kivy/buildozer:latest
       volumes:
         - ${{ github.workspace }}:/home/user/hostcwd
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
     - name: Build Android debug APK
       run: |
-        sudo -u user python3 -m pip install cython
-        chown -R user:user /__w/
-        sudo -u user python3 -m buildozer --version
-        sudo -u user python3 -m buildozer -v android debug
+        python3 -m buildozer --version
+        python3 -m buildozer -v android debug
     #- name: Upload APK
     #  uses: actions/upload-artifact@v4
     #  with:
