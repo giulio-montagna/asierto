@@ -29,6 +29,7 @@ jobs:
     steps:
     - name: Build Android debug APK
       run: |
+        python3 -m pip install buildozer
         python3 -m buildozer --version
         python3 -m buildozer -v android debug
     #- name: Upload APK
