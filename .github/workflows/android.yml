@@ -21,7 +21,7 @@ jobs:
           docker run --rm -v ${{ github.workspace }}:/home/user/hostcwd ghcr.io/kivy/buildozer:latest --version
     - name: get user id of default user from buildozer image
       run: |
-          docker run --rm -v ${{ github.workspace }}:/home/user/hostcwd --entrypoint /usrs/bin/id ghcr.io/kivy/buildozer:latest
+          docker run --rm -v ${{ github.workspace }}:/home/user/hostcwd --entrypoint /usr/bin/id ghcr.io/kivy/buildozer:latest
     - name: run buildozer via docker
       run: |
           docker run --rm -v ${{ github.workspace }}:/home/user/hostcwd ghcr.io/kivy/buildozer:latest -v android debug
