@@ -28,13 +28,15 @@ jobs:
         - ${{ github.workspace }}:/home/user/hostcwd
 
     steps:
-    - name: Build Android debug APK
+    - name: Build Android prepare
       run: |
         chown -R user:user /github 
         sudo -u user python3 -m buildozer --
         sudo -u user whoami
         find /home
         sudo -u user ls /home/user/hostcwd
+    - name: Build Android debug APK
+      run : |
         sudo -u user python3 -m buildozer -v android debug
     #- name: Upload APK
     #  uses: actions/upload-artifact@v4
