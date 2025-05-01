@@ -1,100 +1,73 @@
-from kivy.app import App
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.gridlayout import GridLayout
-from kivy.core.window import Window
-from kivy.core.audio import SoundLoader
+import tkinter as tk
 import random
 
-class GameApp(App):
-    def build(self):
-        # Set the background color to gray
-        Window.clearcolor = (0.5, 0.5, 0.5, 1)  # RGBA format
+# Lista di oggetti con colori
+oggetti = ["rosso", "blu", "verde", "giallo", "nero"]
+colori = {"rosso": "red", "blu": "blue", "verde": "green", "giallo": "yellow", "nero": "black"}
 
-        # Load sounds
-        self.click_sound = SoundLoader.load('suoni/click.mp3')  # Replace with your sound file
-        self.win_sound = SoundLoader.load('suoni/win.mp3')      # Replace with your sound file
+# Dizionario per numeri in lettere in spagnolo
+numeri_in_spagnolo = {0: "cero", 1: "uno", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco"}
 
-        self.oggetti = ["rosso", "blu", "verde", "giallo", "nero"]
-        self.colori = {"rosso": [1, 0, 0, 1], "blu": [0, 0, 1, 1], "verde": [0, 1, 0, 1], "giallo": [1, 1, 0, 1], "nero": [0, 0, 0, 1]}
-        self.soluzione = self.oggetti[:]
-        random.shuffle(self.soluzione)
-        self.selezione = []
+# Creazione di una sequenza casuale come soluzione
+soluzione = oggetti[:]
+random.shuffle(soluzione)
 
-        # Main layout
-        self.layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
+# Variabili globali
+selezione = []
+scambi = []
+bottoni = []
 
-        # Grid for buttons
-        self.grid = GridLayout(cols=len(self.oggetti), spacing=10, size_hint=(1, 0.6))
-        self.bottoni = []
-        for i, colore in enumerate(self.oggetti):
-            btn = Button(background_color=self.colori[colore], on_press=lambda instance, i=i: self.clicca(i))
-            self.bottoni.append(btn)
-            self.grid.add_widget(btn)
-        self.layout.add_widget(self.grid)
+# Funzione per gestire il clic sui bottoni
+def clicca(indice):
+    global selezione
+    selezione.append(indice)
+    if len(selezione) == 2:
+        # Aggiungi lo scambio alla lista degli scambi
+        scambi.append((selezione[0], selezione[1]))
+        selezione = []
 
-        # Feedback label
-        self.feedback_label = Label(text="Inizia il gioco!", font_size=20, size_hint=(1, 0.2))
-        self.layout.add_widget(self.feedback_label)
+# Funzione per concludere il turno
+def conclude_turno():
+    global scambi
+    for i, j in scambi:
+        oggetti[i], oggetti[j] = oggetti[j], oggetti[i]
+    aggiorna_bottoni()
+    verifica_vittoria()
+    scambi = []
 
-        # Replay button
-        replay_btn = Button(text="Replay", size_hint=(1, 0.2), on_press=self.reset_game)
-        self.layout.add_widget(replay_btn)
+# Aggiorna i bottoni con i nuovi colori
+def aggiorna_bottoni():
+    for i, bottone in enumerate(bottoni):
+        bottone.config(bg=colori[oggetti[i]])
 
-        # Bind keyboard events
-        Window.bind(on_key_down=self.on_key_down)
+# Verifica il numero di oggetti nella posizione corretta
+def verifica_vittoria():
+    corretti = sum(1 for i in range(len(oggetti)) if oggetti[i] == soluzione[i])
+    numero_in_lettere = numeri_in_spagnolo[corretti]
+    etichetta_feedback.config(text=f"{numero_in_lettere} asierto.")
+    if corretti == len(oggetti):
+        etichetta_feedback.config(text="¡Felicidades! Hai vinto!")
+        for bottone in bottoni:
+            bottone.config(state="disabled")
+        bottone_invio.config(state="disabled")
 
-        return self.layout
+# Creazione della finestra principale
+finestra = tk.Tk()
+finestra.title("Gioco degli oggetti")
 
-    def clicca(self, indice):
+# Creazione dei bottoni per gli oggetti
+for i, colore in enumerate(oggetti):
+    bottone = tk.Button(finestra, width=15, height=5, bg=colori[colore], command=lambda i=i: clicca(i))
+    bottone.grid(row=0, column=i, padx=10, pady=10)
+    bottoni.append(bottone)
 
+# Bottone per concludere il turno
+bottone_invio = tk.Button(finestra, text="Invio", font=("Arial", 15), command=conclude_turno)
+bottone_invio.grid(row=1, column=0, columnspan=len(oggetti), pady=10)
 
-        self.selezione.append(indice)
-        if len(self.selezione) == 2:  # Fixed comparison
-            # Swap objects
-            self.oggetti[self.selezione[0]], self.oggetti[self.selezione[1]] = self.oggetti[self.selezione[1]], self.oggetti[self.selezione[0]]
+# Etichetta per il feedback
+etichetta_feedback = tk.Label(finestra, text="Inizia il gioco!", font=("Arial", 20))
+etichetta_feedback.grid(row=2, column=0, columnspan=len(oggetti), pady=20)
 
-            # Play click sound
-            if self.click_sound:
-                self.click_sound.play()
-
-            self.aggiorna_bottoni()
-            self.verifica_vittoria()
-            self.selezione = []
-
-    def aggiorna_bottoni(self):
-        for i, bottone in enumerate(self.bottoni):
-            bottone.background_color = self.colori[self.oggetti[i]]
-
-    def verifica_vittoria(self):
-        corretti = sum(1 for i in range(len(self.oggetti)) if self.oggetti[i] == self.soluzione[i])
-        if corretti == len(self.oggetti):
-            self.feedback_label.text = "¡Felicidades! Hai vinto!"
-            for bottone in self.bottoni:
-                bottone.disabled = True
-
-            # Play win sound
-            if self.win_sound:
-                self.win_sound.play()
-        else:
-            self.feedback_label.text = f"{corretti} asierto."
-
-    def reset_game(self, instance):
-        random.shuffle(self.oggetti)
-        self.soluzione = self.oggetti[:]
-        random.shuffle(self.soluzione)
-        self.selezione = []
-        self.aggiorna_bottoni()
-        self.feedback_label.text = "Inizia il gioco!"
-        for bottone in self.bottoni:
-            bottone.disabled = False
-
-    def on_key_down(self, window, key, scancode, codepoint, modifier):
-        if codepoint is not None and codepoint.isdigit():
-            indice = int(codepoint) - 1
-            if 0 <= indice < len(self.oggetti):
-                self.clicca(indice)
-
-if __name__ == "__main__":
-    GameApp().run()
+# Avvia il loop principale di tkinter
+finestra.mainloop()
