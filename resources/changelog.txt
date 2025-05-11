@@ -1,0 +1,2 @@
+- Change Log -
+Versione 0.1.0: Inzio del progetto
