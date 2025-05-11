@@ -8,9 +8,9 @@
    - [x] mettere il suono click.mp3 quando scambio due colori
    - [x] suono solo quando scambio
    - [x] mettere il suono win.mp3 quando vinco
- - [ ] il bottone enter si trasforma in replay quando si perde/vince
+ - [x] il bottone enter si trasforma in replay quando si perde/vince
    - [x] il bottone si trasforma in replay
-   - [ ] funziona anche quando vinci all'ultimo turno
+   - [x] funziona anche quando vinci all'ultimo turno
  - [x] i bottoni del menu devono essere affiancati e più grandi
  - [x] il nero si deve evidenziare
 ----
