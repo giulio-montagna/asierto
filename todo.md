@@ -1,9 +1,9 @@
 ## Lista delle cose da fare
 
- - [ ] crea informazioni su
-   - [ ] informazioni sulla versione
-   - [ ] change log
-   - [ ] crediti
+ - [x] crea informazioni su
+   - [x] informazioni sulla versione
+   - [x] change log
+   - [x] crediti
  - [x] mettere i suoni
    - [x] mettere il suono click.mp3 quando scambio due colori
    - [x] suono solo quando scambio

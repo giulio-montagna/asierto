@@ -1,11 +1,51 @@
 from kivy.app import App
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.popup import Popup
 from kivy.core.window import Window
 from kivy.core.audio import SoundLoader
 import random
+
+__version__ = "0.1.0"
+
+
+class MoreInfo:
+    def __init__(self, app: "GameApp"):
+        self.app = app
+        self.layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
+        self.subtitle = Label(
+            text="¡Asierto! versione " + __version__,
+            font_size=24,
+            size_hint=(1, 0.1)
+        )
+        self.changelog = TextInput(
+            text=open("resources/changelog.txt").read(),
+            font_size=18,
+            size_hint=(1, 0.4),
+            readonly=True,
+        )
+        self.credits = TextInput(
+            text=open("resources/credits.txt").read(),
+            font_size=18,
+            size_hint=(1, 0.4),
+            readonly=True,
+        )
+        self.back_button = Button(
+            text="Torna al menu principale",
+            font_size=24,
+            size_hint=(1, 0.1),
+            on_press=lambda instance: self.app.show_welcome_screen()
+        )
+        self.layout.add_widget(self.subtitle)
+        self.layout.add_widget(self.changelog)
+        self.layout.add_widget(self.credits)
+        self.layout.add_widget(self.back_button)
+
+    def show(self, root: BoxLayout):
+        root.clear_widgets()
+        root.add_widget(self.layout)
 
 
 class GameApp(App):
@@ -21,6 +61,8 @@ class GameApp(App):
         }
         self.reset_game_variables()
         self.root = BoxLayout()
+        # setup screens
+        self.more_info = MoreInfo(self)
         self.show_welcome_screen()
         return self.root
 
@@ -45,17 +87,26 @@ class GameApp(App):
         subtitle = Label(
             text="un gioco di ..., bello",
             font_size=24,
-            size_hint=(1, 0.3)
+            size_hint=(1, 0.2),
         )
+        buttons = BoxLayout(orientation='horizontal', spacing=10, padding=0, size_hint=(1, 0.3))
         start_button = Button(
             text="Inizia",
             font_size=24,
-            size_hint=(1, 0.2),
+            size_hint=(0.8, 1),
             on_press=lambda instance: self.show_turn_limit_popup()
         )
+        info_button = Button(
+            text="Info",
+            font_size=24,
+            size_hint=(0.2, 1),
+            on_press=lambda instance: self.more_info.show(self.root)
+        )
+        buttons.add_widget(start_button)
+        buttons.add_widget(info_button)
         layout.add_widget(title)
         layout.add_widget(subtitle)
-        layout.add_widget(start_button)
+        layout.add_widget(buttons)
         self.root.clear_widgets()
         self.root.add_widget(layout)
 
@@ -173,7 +224,7 @@ class GameApp(App):
             if self.click_sound:
                 self.click_sound.play()
             self.oggetti[self.selezione[0]], self.oggetti[self.selezione[1]] = self.oggetti[self.selezione[1]], \
-            self.oggetti[self.selezione[0]]
+                self.oggetti[self.selezione[0]]
             self.aggiorna_bottoni()
             self.selezione = []
 
