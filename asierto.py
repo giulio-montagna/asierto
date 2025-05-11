@@ -69,6 +69,7 @@ class GameApp(App):
     def reset_game_variables(self):
         self.soluzione = self.oggetti[:]
         random.shuffle(self.soluzione)
+        print("soluzione:",self.soluzione)
         self.selezione = []
         self.turn_limit = 0
         self.use_enter_button = False
@@ -242,6 +243,7 @@ class GameApp(App):
                 bottone.disabled = True
             self.remove_enter_button()
             self.show_replay_button()
+            return  # stop further processing
         else:
             self.feedback_label.text = f"{numero_in_spagnolo} asierto. Turni rimasti: {self.turn_limit - 1}"
 
