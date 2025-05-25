@@ -1,2 +1,5 @@
 - Change Log -
+Versione 0.1.4:
+- scritte più grandi
+- selezione visibile 
 Versione 0.1.0: Inzio del progetto
