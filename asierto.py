@@ -165,7 +165,7 @@ class GameApp(App):
         )
         with_button.bind(on_press=self.start_with_button)
         without_button = Button(
-            text="Scambio Mingolo",
+            text="Scambio Singolo",
             size_hint=(1, 1),
             font_size=BUTTON_SIZE
         )
