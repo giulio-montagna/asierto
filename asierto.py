@@ -159,13 +159,13 @@ class GameApp(App):
 
         button_layout = BoxLayout(orientation='horizontal', spacing=20, size_hint=(1, 0.7))
         with_button = Button(
-            text="Con tasto Enter\n(Avanzato)",
+            text="Scambio Multiplo",
             size_hint=(1, 1),
             font_size=BUTTON_SIZE
         )
         with_button.bind(on_press=self.start_with_button)
         without_button = Button(
-            text="Senza tasto Enter\n(Principiante)",
+            text="Scambio Singolo",
             size_hint=(1, 1),
             font_size=BUTTON_SIZE
         )
