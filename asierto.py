@@ -1,3 +1,5 @@
+import logging
+
 from kivy.config import Config
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
@@ -13,7 +15,7 @@ from kivy.clock import Clock
 from kivy.graphics import Color, Line
 import random
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 # font sizes
 TEXT_SIZE = "18sp"
@@ -79,6 +81,7 @@ class GameApp(App):
     def reset_game_variables(self):
         self.soluzione = self.oggetti[:]
         random.shuffle(self.soluzione)
+        logging.info(f"sequenza misteriosa: {self.soluzione}")
         self.selezione = []
         self.turn_limit = 0
         self.use_enter_button = False
@@ -268,6 +271,7 @@ class GameApp(App):
                 bottone.disabled = True
             self.remove_enter_button()
             self.show_replay_button()
+            return
         else:
             self.feedback_label.text = f"{numero_in_spagnolo} asierto. Turni rimasti: {self.turn_limit - 1}"
 
