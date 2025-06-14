@@ -1,6 +1,7 @@
 import logging
 
 from kivy.config import Config
+
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 from kivy.app import App
@@ -23,6 +24,7 @@ MSG_SIZE = "24sp"
 BUTTON_SIZE = "24sp"
 TITLE_SIZE = "48sp"
 SUB_TITLE_SIZE = "24sp"
+
 
 class MoreInfo:
     def __init__(self, app: "GameApp"):
@@ -230,24 +232,32 @@ class GameApp(App):
             self.feedback_label.text = "Gioco terminato! Limite di turni raggiunto."
             return
 
+        btn = self.bottoni[indice]
+
         if len(self.selezione) == 1 and self.selezione[0] == indice:
+            # toglere il bordo
+            btn.canvas.after.clear()
+            # svuotare la selezione
+            self.selezione = []
+            # fine gestione
             return
 
-        btn = self.bottoni[indice]
         base_color = self.colori[self.oggetti[indice]]
         saturated_color = [min(1, c * 1.5) for c in base_color[:3]] + [base_color[3]]
 
         with btn.canvas.after:
             Color(*saturated_color)
             w = 6
-            btn.border_line = Line(rectangle=(btn.x+w/2, btn.y+w/2, btn.width-w/2, btn.height-w/2), width=w)
+            btn.border_line = Line(rectangle=(btn.x + w / 2, btn.y + w / 2, btn.width - w / 2, btn.height - w / 2),
+                                   width=w)
 
         self.selezione.append(indice)
         if len(self.selezione) == 2:
             Clock.schedule_once(lambda dt: self.complete_swap(), 0.4)
 
     def complete_swap(self):
-        self.oggetti[self.selezione[0]], self.oggetti[self.selezione[1]] = self.oggetti[self.selezione[1]], self.oggetti[self.selezione[0]]
+        self.oggetti[self.selezione[0]], self.oggetti[self.selezione[1]] = self.oggetti[self.selezione[1]], \
+        self.oggetti[self.selezione[0]]
 
         for i in self.selezione:
             btn = self.bottoni[i]
