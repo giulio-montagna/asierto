@@ -5,13 +5,14 @@ from kivy.config import Config
 Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
 
 from kivy.app import App
-from kivy.uix.button import Button
+from kivy.uix.button import Button as ButtonOriginal
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.popup import Popup
+from kivy.input.providers.mouse import MouseMotionEvent
 from kivy.core.window import Window
 from kivy.core.audio import SoundLoader
 from kivy.clock import Clock
@@ -28,11 +29,32 @@ BUTTON_SIZE = "24sp"
 TITLE_SIZE = "48sp"
 SUB_TITLE_SIZE = "24sp"
 
+
+# button wrapper to avoid double click on touch devices
+class Button(ButtonOriginal):
+    def __init__(self, **kwargs):
+        # extract on_press callback
+        self.local_on_press = kwargs.pop("on_press", None)
+        # inject our on_press event
+        kwargs["on_press"] = self.my_on_press
+        # init a normal button
+        super().__init__(**kwargs)
+
+    def my_on_press(self, *args, **kwargs):
+        # if on_press is provided
+        if self.local_on_press is not None:
+            # check if it is a mouse event or not
+            if isinstance(self.last_touch, MouseMotionEvent):
+                # call the provided callback only if it a mouse event
+                return self.local_on_press(*args, **kwargs)
+            # otherwise ignore
+
+
 class ImageButton(FloatLayout):
     def __init__(self, image, **kwargs):
 
-        bgcolor=kwargs.pop("background_color")
-        on_press=kwargs.pop("on_press")
+        bgcolor = kwargs.pop("background_color")
+        on_press = kwargs.pop("on_press")
         super(ImageButton, self).__init__(**kwargs)
 
         # Aggiungi l'immagine
@@ -40,16 +62,16 @@ class ImageButton(FloatLayout):
 
         # Aggiungi il bottone sovrapposto all'immagine
         self.button = Button(background_color=bgcolor, on_press=on_press,
-        size_hint=(1, 1), pos_hint={'center_x': 0.5, 'center_y': 0.5})
+                             size_hint=(1, 1), pos_hint={'center_x': 0.5, 'center_y': 0.5})
         self.add_widget(self.button)
         self.add_widget(self.img)
 
     @staticmethod
-    def makeImage(type,color):
+    def makeImage(type, color):
         image_source = f"imgs/{type}/{color}.png"
         return Image(source=image_source,
-                allow_stretch=True, keep_ratio=True, size_hint=(0.9, 0.9),
-                pos_hint={'center_x': 0.5, 'center_y': 0.5})
+                     allow_stretch=True, keep_ratio=True, size_hint=(0.9, 0.9),
+                     pos_hint={'center_x': 0.5, 'center_y': 0.5})
 
     def update(self, color, image):
         self.img = image
@@ -65,10 +87,11 @@ class ImageButton(FloatLayout):
             with self.canvas.after:
                 Color(*saturated_color)
                 w = 6
-                self.border_line = Line(rectangle=(self.x+w/2, self.y+w/2,
-                                                   self.width-w/2, self.height-w/2), width=w)
+                self.border_line = Line(rectangle=(self.x + w / 2, self.y + w / 2,
+                                                   self.width - w / 2, self.height - w / 2), width=w)
         else:
             self.canvas.after.clear()
+
 
 class MoreInfo:
     def __init__(self, app: "GameApp"):
@@ -80,13 +103,13 @@ class MoreInfo:
             size_hint=(1, 0.1)
         )
         self.changelog = TextInput(
-            text=open("resources/changelog.txt").read(),
+            text=open("resources/changelog.txt", encoding="utf-8").read(),
             font_size=TEXT_SIZE,
             size_hint=(1, 0.4),
             readonly=True,
         )
         self.credits = TextInput(
-            text=open("resources/credits.txt").read(),
+            text=open("resources/credits.txt", encoding="utf-8").read(),
             font_size=TEXT_SIZE,
             size_hint=(1, 0.4),
             readonly=True,
@@ -118,7 +141,7 @@ class GameApp(App):
             "giallo": [1, 1, 0, 1],
             "nero": [0.2, 0.2, 0.2, 1]
         }
-        self.immagini = {colore: ImageButton.makeImage("pinguini",colore) for colore in self.oggetti}
+        self.immagini = {colore: ImageButton.makeImage("pinguini", colore) for colore in self.oggetti}
         self.bottoni = []
         self.reset_game_variables()
         self.root = BoxLayout()
@@ -173,7 +196,7 @@ class GameApp(App):
 
     def show_turn_limit_popup(self):
         layout = BoxLayout(orientation='vertical', spacing=30, padding=30)
-        label = Label(text="Quanti turni vuoi giocare?", font_size=SUB_TITLE_SIZE, size_hint=(1, 0.3))
+        label = Label(text="Per quanti turni vuoi giocare?", font_size=SUB_TITLE_SIZE, size_hint=(1, 0.3))
         layout.add_widget(label)
 
         button_layout = BoxLayout(orientation='horizontal', spacing=20, size_hint=(1, 0.7))
@@ -307,12 +330,12 @@ class GameApp(App):
             # slow swap then snap to previous position so we can trigger
             # the old complete_swap procedure
             animA = (
-                Animation(x=boxB.x,y=boxB.y,duration=0.4) +
-                Animation(x=boxA.x,y=boxA.y,duration=0))
+                    Animation(x=boxB.x, y=boxB.y, duration=0.4) +
+                    Animation(x=boxA.x, y=boxA.y, duration=0))
             animB = (
-                Animation(x=boxA.x,y=boxA.y,duration=0.4) +
-                Animation(x=boxB.x,y=boxB.y,duration=0.0))
-            animB.on_complete = lambda *x:self.complete_swap()
+                    Animation(x=boxA.x, y=boxA.y, duration=0.4) +
+                    Animation(x=boxB.x, y=boxB.y, duration=0.0))
+            animB.on_complete = lambda *x: self.complete_swap()
 
             # remove the borders
             boxA.showBorder(False)
@@ -323,11 +346,11 @@ class GameApp(App):
             animB.start(boxB)
 
             self.click_sound.play()
-            #Clock.schedule_once(lambda dt: self.complete_swap(), 0.4)
+            # Clock.schedule_once(lambda dt: self.complete_swap(), 0.4)
 
     def complete_swap(self):
         self.oggetti[self.selezione[0]], self.oggetti[self.selezione[1]] = self.oggetti[self.selezione[1]], \
-        self.oggetti[self.selezione[0]]
+            self.oggetti[self.selezione[0]]
 
         for i in self.selezione:
             btn = self.bottoni[i]
