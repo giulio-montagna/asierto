@@ -1,9 +1,19 @@
 - Change Log -
+
+Versione 0.1.0: 
+-Inizio del progetto
+
+Versione 0.1.4:
+- scritte più grandi
+- selezione visibile
+
 Versione 0.1.5:
 - Secondo tocco deseleziona
 - Scambio con animazione
 - Sfondo bottoni con Pinguini
-Versione 0.1.4:
-- scritte più grandi
-- selezione visibile 
-Versione 0.1.0: Inizio del progetto
+
+Versione 0.1.6:
+- Aggiunte le Opzioni
+- Le skin si possono scegliere tra le opzioni
+- Aggiunto Tutorial
+- Bottone per il menu principale
