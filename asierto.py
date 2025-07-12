@@ -2,16 +2,20 @@ import logging
 
 from kivy.config import Config
 
-Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
+# Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
+
 
 from kivy.app import App
-from kivy.uix.button import Button as ButtonOriginal
+from kivy.uix.widget import Widget
+from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.popup import Popup
+from kivy.uix.carousel import Carousel
+from kivy.uix.settings import SettingsWithSidebar
 from kivy.input.providers.mouse import MouseMotionEvent
 from kivy.core.window import Window
 from kivy.core.audio import SoundLoader
@@ -20,7 +24,8 @@ from kivy.graphics import Color, Line
 from kivy.animation import Animation
 import random
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"
+
 
 # font sizes
 TEXT_SIZE = "18sp"
@@ -29,49 +34,45 @@ BUTTON_SIZE = "24sp"
 TITLE_SIZE = "48sp"
 SUB_TITLE_SIZE = "24sp"
 
+TYPES = ["Pinguini", "Papere", "Orsi", "Zebre"]
 
-# button wrapper to avoid double click on touch devices
-class Button(ButtonOriginal):
-    def __init__(self, **kwargs):
-        # extract on_press callback
-        self.local_on_press = kwargs.pop("on_press", None)
-        # inject our on_press event
-        kwargs["on_press"] = self.my_on_press
-        # init a normal button
-        super().__init__(**kwargs)
 
-    def my_on_press(self, *args, **kwargs):
-        # if on_press is provided
-        if self.local_on_press is not None:
-            # check if it is a mouse event or not
-            if isinstance(self.last_touch, MouseMotionEvent):
-                # call the provided callback only if it a mouse event
-                return self.local_on_press(*args, **kwargs)
-            # otherwise ignore
-
+def remove_widget(widget: Widget) -> bool:
+    """remove widget from its parent if any"""
+    if widget.parent:
+        widget.parent.remove_widget(widget)
+        return True
+    return False
 
 class ImageButton(FloatLayout):
     def __init__(self, image, **kwargs):
 
-        bgcolor = kwargs.pop("background_color")
-        on_press = kwargs.pop("on_press")
+        bgcolor=kwargs.pop("background_color")
+        on_press=kwargs.pop("on_press")
         super(ImageButton, self).__init__(**kwargs)
 
         # Aggiungi l'immagine
         self.img = image
 
-        # Aggiungi il bottone sovrapposto all'immagine
+        # Aggiungi il bottone sotto l'immagine
         self.button = Button(background_color=bgcolor, on_press=on_press,
-                             size_hint=(1, 1), pos_hint={'center_x': 0.5, 'center_y': 0.5})
+                             size_hint=(1, 1),
+                             pos_hint={'center_x': 0.5, 'center_y': 0.5})
+
+        self.target = Button(size_hint=(1,0.1),
+                             pos_hint={'center_x': 0.5, 'center_y': 0.05})
+        self.target.background_disabled_normal = self.target.background_normal
+        self.target.background_disabled_down = self.target.background_normal
+        self.target.disabled=True
         self.add_widget(self.button)
         self.add_widget(self.img)
 
     @staticmethod
-    def makeImage(type, color):
-        image_source = f"imgs/{type}/{color}.png"
+    def makeImage(type,color):
+        image_source = f"imgs/skin/{type}/{color}.png"
         return Image(source=image_source,
-                     allow_stretch=True, keep_ratio=True, size_hint=(0.9, 0.9),
-                     pos_hint={'center_x': 0.5, 'center_y': 0.5})
+                allow_stretch=True, keep_ratio=True, size_hint=(0.9, 0.9),
+                pos_hint={'center_x': 0.5, 'center_y': 0.5})
 
     def update(self, color, image):
         self.img = image
@@ -80,6 +81,21 @@ class ImageButton(FloatLayout):
         self.add_widget(self.button)
         self.add_widget(self.img)
 
+    def disconnectImage(self):
+        remove_widget(self.img)
+
+    def enable(self):
+        self.disabled = False
+        remove_widget(self.target)
+
+    def disable(self):
+        self.disabled = True
+
+    def showTarget(self,color):
+        saturated_color = [min(1, c * 1.5) for c in color[:3]] + [color[3]]
+        self.target.background_color = color
+        self.add_widget(self.target)
+
     def showBorder(self, show=True):
         bgcolor = self.button.background_color
         saturated_color = [min(1, c * 1.5) for c in bgcolor[:3]] + [bgcolor[3]]
@@ -87,11 +103,10 @@ class ImageButton(FloatLayout):
             with self.canvas.after:
                 Color(*saturated_color)
                 w = 6
-                self.border_line = Line(rectangle=(self.x + w / 2, self.y + w / 2,
-                                                   self.width - w / 2, self.height - w / 2), width=w)
+                self.border_line = Line(rectangle=(self.x+w/2, self.y+w/2,
+                                                   self.width-w/2, self.height-w/2), width=w)
         else:
             self.canvas.after.clear()
-
 
 class MoreInfo:
     def __init__(self, app: "GameApp"):
@@ -103,13 +118,13 @@ class MoreInfo:
             size_hint=(1, 0.1)
         )
         self.changelog = TextInput(
-            text=open("resources/changelog.txt", encoding="utf-8").read(),
+            text=open("resources/changelog.txt",encoding="utf-8").read(),
             font_size=TEXT_SIZE,
             size_hint=(1, 0.4),
             readonly=True,
         )
         self.credits = TextInput(
-            text=open("resources/credits.txt", encoding="utf-8").read(),
+            text=open("resources/credits.txt",encoding="utf-8").read(),
             font_size=TEXT_SIZE,
             size_hint=(1, 0.4),
             readonly=True,
@@ -125,14 +140,103 @@ class MoreInfo:
         self.layout.add_widget(self.credits)
         self.layout.add_widget(self.back_button)
 
+
     def show(self, root: BoxLayout):
         root.clear_widgets()
         root.add_widget(self.layout)
 
+class TutorialScreen():
+    def __init__(self, app):
+        self.app = app
 
-class GameApp(App):
-    def build(self):
-        Window.clearcolor = (0.5, 0.5, 0.5, 1)
+        # Creo il carousel
+        carousel = Carousel(loop=False)
+
+        # Definisco le slide del tutorial
+        tutorial_data = [
+            {
+                'image': 'imgs/tutorial/tutorial1.png',
+                'title': '',
+                'text': ''
+            },
+            {
+                'image': 'imgs/tutorial/tutorial2.png',
+                'title': '',
+                'text': ''
+            },
+            {
+                'image': 'imgs/tutorial/tutorial3.png',
+                'title': '',
+                'text': ''
+            }
+        ]
+
+        # Aggiungo le slide al carousel
+        for slide in tutorial_data:
+            slide_layout = FloatLayout()#BoxLayout(orientation='vertical', padding=20, spacing=10)
+
+            if slide['image']:
+                slide_image = Image(
+                    source=slide['image'],
+                    allow_stretch=True,
+                    keep_ratio=True
+                )
+                slide_layout.add_widget(slide_image)
+
+            if slide == tutorial_data[0]:
+                prev = Button(
+                    text="Indietro",
+                    font_size=TEXT_SIZE,
+                    size_hint=(0.1, 0.15),  # dimensione relativa
+                    pos_hint={'x': 0, 'bottom': 0},  # allineato a sinistra in basso
+                    on_press=self.start_game
+                )
+            else:
+                prev = Button(
+                    text="Indietro",
+                    font_size=TEXT_SIZE,
+                    size_hint=(0.1, 0.15),  # dimensione relativa
+                    pos_hint={'x': 0, 'bottom': 0},  # allineato a sinistra in basso
+                    on_press=lambda *a: carousel.load_previous()
+                )
+            slide_layout.add_widget(prev)
+
+            if slide == tutorial_data[-1]:
+                next = Button(
+                    text="Ok",
+                    font_size=TEXT_SIZE,
+                    size_hint=(0.1, 0.15),
+                    pos_hint={'right': 1, 'bottom': 0},
+                    on_press=self.start_game
+                )
+            else:
+                next = Button(
+                    text="Avanti",
+                    font_size=TEXT_SIZE,
+                    size_hint=(0.1, 0.15),
+                    pos_hint={'right': 1, 'bottom': 0},
+                    on_press=lambda *a: carousel.load_next()
+                )
+            slide_layout.add_widget(next)
+
+            carousel.add_widget(slide_layout)
+
+        self.carousel = carousel
+
+    def start_game(self, *args):
+        # Logica per iniziare il gioco
+        self.app.show_welcome_screen()
+
+    def show(self, root: BoxLayout):
+        root.clear_widgets()
+        self.carousel.index = 0
+        root.add_widget(self.carousel)
+
+
+
+class GameScreen:
+    def __init__(self, app,type_=None):
+        self.app = app
         self.oggetti = ["rosso", "blu", "verde", "giallo", "nero"]
         self.colori = {
             "rosso": [1, 0, 0, 1],
@@ -141,13 +245,25 @@ class GameApp(App):
             "giallo": [1, 1, 0, 1],
             "nero": [0.2, 0.2, 0.2, 1]
         }
-        self.immagini = {colore: ImageButton.makeImage("pinguini", colore) for colore in self.oggetti}
+
+        self.immagini = self.make_images()
+        self.numeri_in_spagnolo = {0: "cero", 1: "uno", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco"}
+        self.click_sound = SoundLoader.load('suoni/click.mp3')
+        self.victory_sound = SoundLoader.load('suoni/win.mp3')
         self.bottoni = []
+        self.use_enter_button = False
         self.reset_game_variables()
-        self.root = BoxLayout()
-        self.more_info = MoreInfo(self)
-        self.show_welcome_screen()
-        return self.root
+        self.setup_game_window()
+
+    def make_images(self,update_buttons=False):
+        skin  = self.app.config.get("Game","skin")
+        if skin == None or skin not in TYPES:
+            skin = random.choice(TYPES)
+
+        if not update_buttons:
+            return {colore: ImageButton.makeImage(skin.lower(), colore) for colore in self.oggetti}
+        self.immagini = {colore: ImageButton.makeImage(skin.lower(), colore) for colore in self.oggetti}
+        self.aggiorna_bottoni()
 
     def reset_game_variables(self):
         self.soluzione = self.oggetti[:]
@@ -155,124 +271,12 @@ class GameApp(App):
         logging.info(f"sequenza misteriosa: {self.soluzione}")
         self.selezione = []
         self.turn_limit = 0
-        self.use_enter_button = False
-        self.numeri_in_spagnolo = {0: "cero", 1: "uno", 2: "dos", 3: "tres", 4: "cuatro", 5: "cinco"}
-        self.click_sound = SoundLoader.load('suoni/click.mp3')
-        self.victory_sound = SoundLoader.load('suoni/win.mp3')
-
-    def show_welcome_screen(self):
-        layout = BoxLayout(orientation='vertical', spacing=30, padding=30)
-        title = Label(
-            text="¡Asierto!",
-            font_size=TITLE_SIZE,
-            size_hint=(1, 0.5),
-            bold=True
-        )
-        subtitle = Label(
-            text="Clicca su due colori per scambiarli.\nScopri se hai indovinato la sequenza misteriosa!",
-            font_size=MSG_SIZE,
-            size_hint=(1, 0.2),
-        )
-        buttons = BoxLayout(orientation='horizontal', spacing=10, padding=0, size_hint=(1, 0.3))
-        start_button = Button(
-            text="Inizia",
-            font_size=BUTTON_SIZE,
-            size_hint=(0.8, 1),
-            on_press=lambda instance: self.show_turn_limit_popup()
-        )
-        info_button = Button(
-            text="Info",
-            font_size=BUTTON_SIZE,
-            size_hint=(0.2, 1),
-            on_press=lambda instance: self.more_info.show(self.root)
-        )
-        buttons.add_widget(start_button)
-        buttons.add_widget(info_button)
-        layout.add_widget(title)
-        layout.add_widget(subtitle)
-        layout.add_widget(buttons)
-        self.root.clear_widgets()
-        self.root.add_widget(layout)
-
-    def show_turn_limit_popup(self):
-        layout = BoxLayout(orientation='vertical', spacing=30, padding=30)
-        label = Label(text="Per quanti turni vuoi giocare?", font_size=SUB_TITLE_SIZE, size_hint=(1, 0.3))
-        layout.add_widget(label)
-
-        button_layout = BoxLayout(orientation='horizontal', spacing=20, size_hint=(1, 0.7))
-        for limit in [5, 10, 15]:
-            btn = Button(
-                text=f"{limit} turni",
-                size_hint=(1, 1),
-                font_size=BUTTON_SIZE
-            )
-            btn.bind(on_press=lambda instance, limit=limit: self.set_turn_limit(limit))
-            button_layout.add_widget(btn)
-        layout.add_widget(button_layout)
-
-        self.turn_limit_popup = Popup(
-            title="Imposta limite di turni",
-            content=layout,
-            size_hint=(0.8, 0.5),
-            auto_dismiss=False
-        )
-        self.turn_limit_popup.open()
-
-    def set_turn_limit(self, limit):
-        self.turn_limit = limit
-        self.turn_limit_popup.dismiss()
-        self.show_mode_selection_popup()
-
-    def show_mode_selection_popup(self):
-        layout = BoxLayout(orientation='vertical', spacing=30, padding=30)
-        label = Label(text="Seleziona Modalità", font_size=SUB_TITLE_SIZE, size_hint=(1, 0.3))
-        layout.add_widget(label)
-
-        button_layout = BoxLayout(orientation='horizontal', spacing=20, size_hint=(1, 0.7))
-        with_button = Button(
-            text="Scambio Multiplo",
-            size_hint=(1, 1),
-            font_size=BUTTON_SIZE
-        )
-        with_button.bind(on_press=self.start_with_button)
-        without_button = Button(
-            text="Scambio Singolo",
-            size_hint=(1, 1),
-            font_size=BUTTON_SIZE
-        )
-        without_button.bind(on_press=self.start_without_button)
-        button_layout.add_widget(without_button)
-        button_layout.add_widget(with_button)
-        layout.add_widget(button_layout)
-
-        self.mode_selection_popup = Popup(
-            title="Seleziona modalità",
-            content=layout,
-            size_hint=(0.8, 0.5),
-            auto_dismiss=False
-        )
-        self.mode_selection_popup.open()
-
-    def start_with_button(self, instance):
-        self.use_enter_button = True
-        self.mode_selection_popup.dismiss()
-        self.start_game()
-
-    def start_without_button(self, instance):
-        self.use_enter_button = False
-        self.mode_selection_popup.dismiss()
-        self.start_game()
 
     def setup_game_window(self):
         self.layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
         self.grid = BoxLayout(orientation='horizontal', spacing=10, size_hint=(1, 0.6))
-        # se ci sono bottoni dal gioco precedente
-        if len(self.bottoni) > 0:
-            # staccare le immagini dai vecchi bottoni
-            # prima di proseguire con il setup
-            for btn in self.bottoni:
-                btn.clear_widgets()
-        self.bottoni = []
+        self.footer = BoxLayout(orientation='horizontal', spacing=10, size_hint=(1, 0.2))
+        self.bottoni =[]
         for i, colore in enumerate(self.oggetti):
             btn = ImageButton(
                 image=self.immagini[colore],
@@ -290,25 +294,25 @@ class GameApp(App):
             size_hint=(1, 0.2)
         )
         self.layout.add_widget(self.feedback_label)
+        self.layout.add_widget(self.footer)
 
-        if self.use_enter_button:
-            self.enter_btn = Button(
-                text="Enter",
-                size_hint=(1, 0.2),
-                font_size=BUTTON_SIZE,
-                on_press=self.misura_asierto
-            )
-            self.layout.add_widget(self.enter_btn)
-
-    def start_game(self):
-        self.setup_game_window()
-
-        self.root.clear_widgets()
-        self.root.add_widget(self.layout)
+        self.enter_btn = Button(
+            text="Enter",
+            size_hint=(1, 1),
+            font_size=BUTTON_SIZE,
+            on_press=self.misura_asierto
+        )
+        self.replay_btn = Button(
+            text="Menu principale",
+            size_hint=(1, 1),
+            font_size=BUTTON_SIZE,
+            on_press=self.app.restart_game
+        )
+        self.footer.add_widget(self.replay_btn)
 
     def clicca(self, indice):
         if self.turn_limit <= 0:
-            self.feedback_label.text = "Gioco terminato! Limite di turni raggiunto."
+            # self.feedback_label.text = "Gioco terminato! Limite di turni raggiunto."
             return
 
         btn = self.bottoni[indice]
@@ -330,12 +334,12 @@ class GameApp(App):
             # slow swap then snap to previous position so we can trigger
             # the old complete_swap procedure
             animA = (
-                    Animation(x=boxB.x, y=boxB.y, duration=0.4) +
-                    Animation(x=boxA.x, y=boxA.y, duration=0))
+                Animation(x=boxB.x,y=boxB.y,duration=0.4) +
+                Animation(x=boxA.x,y=boxA.y,duration=0))
             animB = (
-                    Animation(x=boxA.x, y=boxA.y, duration=0.4) +
-                    Animation(x=boxB.x, y=boxB.y, duration=0.0))
-            animB.on_complete = lambda *x: self.complete_swap()
+                Animation(x=boxA.x,y=boxA.y,duration=0.4) +
+                Animation(x=boxB.x,y=boxB.y,duration=0.0))
+            animB.on_complete = lambda *x:self.complete_swap()
 
             # remove the borders
             boxA.showBorder(False)
@@ -346,11 +350,11 @@ class GameApp(App):
             animB.start(boxB)
 
             self.click_sound.play()
-            # Clock.schedule_once(lambda dt: self.complete_swap(), 0.4)
+            #Clock.schedule_once(lambda dt: self.complete_swap(), 0.4)
 
     def complete_swap(self):
         self.oggetti[self.selezione[0]], self.oggetti[self.selezione[1]] = self.oggetti[self.selezione[1]], \
-            self.oggetti[self.selezione[0]]
+        self.oggetti[self.selezione[0]]
 
         for i in self.selezione:
             btn = self.bottoni[i]
@@ -366,13 +370,10 @@ class GameApp(App):
         corretti = sum(1 for i in range(len(self.oggetti)) if self.oggetti[i] == self.soluzione[i])
         numero_in_spagnolo = self.numeri_in_spagnolo.get(corretti, str(corretti))
         if corretti == len(self.oggetti):
-            self.feedback_label.text = "¡Felicidades! Hai vinto!"
+            self.feedback_label.text = f"¡Felicidades! Hai vinto! (Turni rimasti: {self.turn_limit - 1})"
             if self.victory_sound:
                 self.victory_sound.play()
-            for bottone in self.bottoni:
-                bottone.disabled = True
-            self.remove_enter_button()
-            self.show_replay_button()
+            self.replay()
             return
         else:
             self.feedback_label.text = f"{numero_in_spagnolo} asierto. Turni rimasti: {self.turn_limit - 1}"
@@ -381,40 +382,267 @@ class GameApp(App):
             self.turn_limit -= 1
         if self.turn_limit <= 0:
             self.feedback_label.text = "Gioco terminato! Limite di turni raggiunto."
-            # disabilitiamo i bottoni quando il gioco finisce
-            for bottone in self.bottoni:
-                bottone.disabled = True
-            self.remove_enter_button()
-            self.show_replay_button()
-
-    def remove_enter_button(self):
-        if self.use_enter_button and hasattr(self, 'enter_btn'):
-            self.layout.remove_widget(self.enter_btn)
-
-    def show_replay_button(self):
-        replay_btn = Button(
-            text="Replay",
-            size_hint=(1, 0.2),
-            font_size=BUTTON_SIZE,
-            on_press=self.restart_game
-        )
-        self.layout.add_widget(replay_btn)
-
-    def restart_game(self, instance):
-        self.reset_game_variables()
-        self.root.clear_widgets()
-        self.show_turn_limit_popup()
+            self.replay()
+            return
 
     def aggiorna_bottoni(self):
         # smontare le immagini dai bottoni precedenti
-        for i, bottone in enumerate(self.bottoni):
-            bottone.clear_widgets()
+        for btn in self.bottoni:
+            btn.disconnectImage()
         # aggiornare colore e immagine nei bottoni
-        for i, bottone in enumerate(self.bottoni):
+        for bottone,colore in zip(self.bottoni,self.oggetti):
             bottone.update(
-                color=self.colori[self.oggetti[i]],
-                image=self.immagini[self.oggetti[i]]
+                color=self.colori[colore],
+                image=self.immagini[colore]
+                )
+
+    def reset(self,include_images=False):
+        # disconnect enter
+        # remove_widget(self.enter_btn)
+        self.enter_btn.disabled = True
+        # disconnect replay
+        # remove_widget(self.replay_btn)
+        # reset feedback Label
+        self.feedback_label.text = f"Inizia il gioco! Turni rimasti: {self.turn_limit}"
+        # enable buttons
+        for bottone in self.bottoni:
+            bottone.enable()
+        # disconnect images
+        if include_images:
+            for btn in self.bottoni:
+                btn.disconnectImage()
+
+
+    def show_enter(self,show=True):
+        if show:
+            remove_widget(self.enter_btn)
+            self.footer.add_widget(self.enter_btn)
+            self.enter_btn.disabled = False
+        else:
+            remove_widget(self.enter_btn)
+
+    def start_with_button(self):
+        self.make_images(update_buttons=True)
+        self.use_enter_button = True
+        self.reset(include_images=False)
+        self.show_enter()
+        self.enter_btn.size_hint[0] = 0.8
+        self.replay_btn.size_hint[0] = 0.2
+        self.show()
+
+    def start_without_button(self):
+        self.make_images(update_buttons=True)
+        self.use_enter_button = False
+        self.reset(include_images=False)
+        self.show_enter(False)
+        self.enter_btn.size_hint[0] = 1
+        self.replay_btn.size_hint[0] = 1
+        self.show()
+
+    def set_turn_limit(self,limit):
+        self.turn_limit = limit
+
+    def replay(self):
+        for bottone,colore in zip(self.bottoni,self.soluzione):
+            bottone.disable()
+            bottone.showTarget(self.colori[colore])
+        # remove_widget(self.enter_btn)
+        self.enter_btn.disabled = True
+        #self.layout.add_widget(self.replay_btn)
+
+    def show(self, root: BoxLayout=None):
+        if root is None:
+            root= self.app.root
+        root.clear_widgets()
+        root.add_widget(self.layout)
+
+json = '''
+[{
+   "type": "options",
+   "title": "Turni",
+   "desc": "Quanti turni vuoi giocare",
+   "section": "Game",
+   "key": "turni",
+   "options": ["5", "10", "15"] },
+ {
+  "type": "options",
+  "title": "Modalità",
+  "desc": "Seleziona modalità",
+  "section": "Game",
+  "key": "scambio",
+  "options": ["Scambio Singolo", "Scambio Multiplo"]
+  },
+{
+ "type": "options",
+ "title": "Skin",
+ "desc": "Seleziona la skin preferita",
+ "section": "Game",
+ "key": "skin",
+ "options": ["casuale","orsi","papere","pinguini","zebre"]
+ }
+]
+'''
+
+class GameApp(App):
+    def build(self):
+        Window.clearcolor = (0.5, 0.5, 0.5, 1)
+        self.game = GameScreen(app=self)
+        self.root = BoxLayout()
+        self.more_info = MoreInfo(app=self)
+        self.settings_cls = SettingsWithSidebar
+        self.use_kivy_settings = False
+        self.tutorial = TutorialScreen(app=self)
+        #self.use_kivy_settings = False
+        self.show_welcome_screen()
+        return self.root
+
+    def show_welcome_screen(self):
+        layout = BoxLayout(orientation='vertical', spacing=30, padding=30)
+        title = Label(
+            text="¡Asierto!",
+            font_size=TITLE_SIZE,
+            size_hint=(1, 0.5),
+            bold=True
+        )
+        subtitle = Label(
+            text="Clicca su due colori per scambiarli.\nScopri se hai indovinato la sequenza misteriosa!",
+            font_size=MSG_SIZE,
+            size_hint=(1, 0.2),
+        )
+        buttons = BoxLayout(orientation='horizontal', spacing=10, padding=0, size_hint=(1, 0.3))
+        start_button = Button(
+            text="Inizia",
+            font_size=BUTTON_SIZE,
+            size_hint=(0.4, 1),
+            #on_press=lambda instance: self.show_turn_limit_popup()
+            on_press= lambda instance: self.start_game()
+        )
+        tutorial_button =Button(
+            text="Tutorial",
+            font_size=BUTTON_SIZE,
+            size_hint=(0.2, 1),
+            on_press=lambda instance: self.tutorial.show(self.root)
+        )
+        info_button = Button(
+            text="Info",
+            font_size=BUTTON_SIZE,
+            size_hint=(0.2, 1),
+            on_press=lambda instance: self.more_info.show(self.root)
+        )
+        settings_button = Button(
+            text="Opzioni",
+            font_size=BUTTON_SIZE,
+            size_hint=(0.2, 1),
+            on_press=lambda instance: self.open_settings()
+        )
+        buttons.add_widget(start_button)
+        buttons.add_widget(tutorial_button)
+        buttons.add_widget(info_button)
+        buttons.add_widget(settings_button)
+        layout.add_widget(title)
+        layout.add_widget(subtitle)
+        layout.add_widget(buttons)
+        self.root.clear_widgets()
+        self.root.add_widget(layout)
+
+    def start_game(self):
+        limit = int(self.config.get("Game","turni"))
+        self.game.set_turn_limit(limit)
+        with_button = self.config.get("Game","scambio") != "Scambio Singolo"
+        if with_button:
+            self.game.start_with_button()
+        else:
+            self.game.start_without_button()
+
+
+
+    def show_turn_limit_popup(self):
+        layout = BoxLayout(orientation='vertical', spacing=30, padding=30)
+        label = Label(text="Per quanti turni vuoi giocare?", font_size=SUB_TITLE_SIZE, size_hint=(1, 0.3))
+        layout.add_widget(label)
+
+        def set_turn_limit(limit):
+            self.game.set_turn_limit(limit)
+            self.turn_limit_popup.dismiss()
+            self.show_mode_selection_popup()
+
+        button_layout = BoxLayout(orientation='horizontal', spacing=20, size_hint=(1, 0.7))
+        for limit in [5, 10, 15]:
+            btn = Button(
+                text=f"{limit} turni",
+                size_hint=(1, 1),
+                font_size=BUTTON_SIZE
             )
+            btn.bind(on_press=lambda instance, limit=limit: set_turn_limit(limit))
+            button_layout.add_widget(btn)
+        layout.add_widget(button_layout)
+
+        self.turn_limit_popup = Popup(
+            title="Imposta limite di turni",
+            content=layout,
+            size_hint=(0.8, 0.5),
+            auto_dismiss=False
+        )
+        self.turn_limit_popup.open()
+
+    def show_mode_selection_popup(self):
+        layout = BoxLayout(orientation='vertical', spacing=30, padding=30)
+        label = Label(text="Seleziona Modalità", font_size=SUB_TITLE_SIZE, size_hint=(1, 0.3))
+        layout.add_widget(label)
+
+        def start_game(with_button):
+            def cb(instance):
+                if with_button:
+                    self.game.start_with_button()
+                else:
+                    self.game.start_without_button()
+                self.mode_selection_popup.dismiss()
+            return cb
+
+        button_layout = BoxLayout(orientation='horizontal', spacing=20, size_hint=(1, 0.7))
+        with_button = Button(
+            text="Scambio Multiplo",
+            size_hint=(1, 1),
+            font_size=BUTTON_SIZE
+        )
+        with_button.bind(on_press=start_game(with_button=True))
+        without_button = Button(
+            text="Scambio Singolo",
+            size_hint=(1, 1),
+            font_size=BUTTON_SIZE
+        )
+        without_button.bind(on_press=start_game(with_button=False))
+        button_layout.add_widget(without_button)
+        button_layout.add_widget(with_button)
+        layout.add_widget(button_layout)
+
+        self.mode_selection_popup = Popup(
+            title="Seleziona modalità",
+            content=layout,
+            size_hint=(0.8, 0.5),
+            auto_dismiss=False
+        )
+        self.mode_selection_popup.open()
+
+    def restart_game(self, instance):
+        self.game.reset_game_variables()
+        self.root.clear_widgets()
+        # self.show_turn_limit_popup()
+        self.show_welcome_screen()
+
+    def build_config(self, config):
+       config.setdefaults(
+         'Game', {'turni': "15", 'scambio': "Scambio Singolo","skin": "casuale"}
+       )
+       self.config = config
+
+    def build_settings(self, settings):
+       from json import loads,dumps
+       data = loads(json)
+       skin = [i for i in data if i["title"]=="Skin"][0]
+       skin["options"] = ["Casuale"] + TYPES
+       data = dumps(data)
+       settings.add_json_panel('Opzioni', self.config, data=data)
 
 
 if __name__ == "__main__":
