@@ -2,9 +2,6 @@ import logging
 
 from kivy.config import Config
 
-# Config.set('input', 'mouse', 'mouse,multitouch_on_demand')
-
-
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.uix.button import Button
@@ -13,6 +10,7 @@ from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.popup import Popup
 from kivy.uix.carousel import Carousel
 from kivy.uix.settings import SettingsWithSidebar
@@ -23,19 +21,13 @@ from kivy.clock import Clock
 from kivy.graphics import Color, Line
 from kivy.animation import Animation
 import random
+import os, json, shutil
 
-__version__ = "0.1.6"
+__version__ = "0.1.7"
 
-
-# font sizes
-TEXT_SIZE = "18sp"
-MSG_SIZE = "24sp"
-BUTTON_SIZE = "24sp"
-TITLE_SIZE = "48sp"
-SUB_TITLE_SIZE = "24sp"
-
-TYPES = ["Pinguini", "Papere", "Orsi", "Zebre"]
-
+import globals as G
+from manifest import Manifest
+from settingOptionsScroll import SettingOptionsScroll
 
 def remove_widget(widget: Widget) -> bool:
     """remove widget from its parent if any"""
@@ -43,6 +35,20 @@ def remove_widget(widget: Widget) -> bool:
         widget.parent.remove_widget(widget)
         return True
     return False
+
+def scrollifyLabel(label,**scroll):
+    from kivy.graphics import Color, Rectangle
+
+    scroll= {"size_hint":(1, None)}|scroll
+    root = ScrollView(**scroll)
+    layout = BoxLayout(size_hint_y=None,size_hint_x=1)
+    layout.bind(minimum_height=layout.setter('height'))
+    layout.bind(width=lambda i,v:setattr(label,'text_size',[v,label.text_size[1]]))
+
+    label.bind(texture_size=lambda instance, value: setattr(instance, 'height', value[1]))
+    layout.add_widget(label)
+    root.add_widget(layout)
+    return root
 
 class ImageButton(FloatLayout):
     def __init__(self, image, **kwargs):
@@ -114,31 +120,45 @@ class MoreInfo:
         self.layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
         self.subtitle = Label(
             text="¡Asierto! versione " + __version__,
-            font_size=SUB_TITLE_SIZE,
+            font_size=G.TITLE_SIZE,
             size_hint=(1, 0.1)
         )
-        self.changelog = TextInput(
-            text=open("resources/changelog.txt",encoding="utf-8").read(),
-            font_size=TEXT_SIZE,
-            size_hint=(1, 0.4),
-            readonly=True,
+        text = open("resources/changelog.txt",encoding="utf-8").read()
+        text += "\n CREDITS:\n"
+        text +=open("resources/credits.txt",encoding="utf-8").read()
+        #self.changelogScroll = WrapScrollView(do_scroll_x=False,do_scroll_y=True,size_hint=(1, 0.4))
+        self.changelog = Label(
+            #text=open("resources/changelog.txt",encoding="utf-8").read(),
+            text=text,
+            font_size=G.TEXT_SIZE,
+            #size_hint=(1, 0.4),
+            size_hint_y=None,
+            size_hint_x=1,
+            #readonly=True,
         )
-        self.credits = TextInput(
+        #self.changelogScroll.add_widget(self.changelog)
+        self.changelogScroll = scrollifyLabel(self.changelog,size_hint=(1, 0.8),)
+        self.creditsLabel = Label(
             text=open("resources/credits.txt",encoding="utf-8").read(),
-            font_size=TEXT_SIZE,
-            size_hint=(1, 0.4),
-            readonly=True,
+            font_size=G.TEXT_SIZE,
+            #size_hint=(1, 0.4),
+            #readonly=True,
+            size_hint_y=None,
+            size_hint_x=1,
         )
+        self.credits = scrollifyLabel(self.creditsLabel,size_hint=(1, 0.4),)
         self.back_button = Button(
             text="Torna al menu principale",
-            font_size=BUTTON_SIZE,
+            font_size=G.BUTTON_SIZE,
             size_hint=(1, 0.1),
             on_press=lambda instance: self.app.show_welcome_screen()
         )
         self.layout.add_widget(self.subtitle)
-        self.layout.add_widget(self.changelog)
-        self.layout.add_widget(self.credits)
+        self.layout.add_widget(self.changelogScroll)
+        #self.layout.add_widget(self.credits)
         self.layout.add_widget(self.back_button)
+        #self.credits.disabled = True
+        #self.changelog.disabled = True
 
 
     def show(self, root: BoxLayout):
@@ -186,7 +206,7 @@ class TutorialScreen():
             if slide == tutorial_data[0]:
                 prev = Button(
                     text="Indietro",
-                    font_size=TEXT_SIZE,
+                    font_size=G.TEXT_SIZE,
                     size_hint=(0.1, 0.15),  # dimensione relativa
                     pos_hint={'x': 0, 'bottom': 0},  # allineato a sinistra in basso
                     on_press=self.start_game
@@ -194,7 +214,7 @@ class TutorialScreen():
             else:
                 prev = Button(
                     text="Indietro",
-                    font_size=TEXT_SIZE,
+                    font_size=G.TEXT_SIZE,
                     size_hint=(0.1, 0.15),  # dimensione relativa
                     pos_hint={'x': 0, 'bottom': 0},  # allineato a sinistra in basso
                     on_press=lambda *a: carousel.load_previous()
@@ -204,7 +224,7 @@ class TutorialScreen():
             if slide == tutorial_data[-1]:
                 next = Button(
                     text="Ok",
-                    font_size=TEXT_SIZE,
+                    font_size=G.TEXT_SIZE,
                     size_hint=(0.1, 0.15),
                     pos_hint={'right': 1, 'bottom': 0},
                     on_press=self.start_game
@@ -212,7 +232,7 @@ class TutorialScreen():
             else:
                 next = Button(
                     text="Avanti",
-                    font_size=TEXT_SIZE,
+                    font_size=G.TEXT_SIZE,
                     size_hint=(0.1, 0.15),
                     pos_hint={'right': 1, 'bottom': 0},
                     on_press=lambda *a: carousel.load_next()
@@ -257,8 +277,8 @@ class GameScreen:
 
     def make_images(self,update_buttons=False):
         skin  = self.app.config.get("Game","skin")
-        if skin == None or skin not in TYPES:
-            skin = random.choice(TYPES)
+        if skin == None or skin not in self.app.manifest.types:
+            skin = random.choice(self.app.manifest.types)
 
         if not update_buttons:
             return {colore: ImageButton.makeImage(skin.lower(), colore) for colore in self.oggetti}
@@ -290,7 +310,7 @@ class GameScreen:
 
         self.feedback_label = Label(
             text=f"Inizia il gioco! Turni rimasti: {self.turn_limit}",
-            font_size=MSG_SIZE,
+            font_size=G.MSG_SIZE,
             size_hint=(1, 0.2)
         )
         self.layout.add_widget(self.feedback_label)
@@ -299,13 +319,13 @@ class GameScreen:
         self.enter_btn = Button(
             text="Enter",
             size_hint=(1, 1),
-            font_size=BUTTON_SIZE,
+            font_size=G.BUTTON_SIZE,
             on_press=self.misura_asierto
         )
         self.replay_btn = Button(
             text="Menu principale",
             size_hint=(1, 1),
-            font_size=BUTTON_SIZE,
+            font_size=G.BUTTON_SIZE,
             on_press=self.app.restart_game
         )
         self.footer.add_widget(self.replay_btn)
@@ -486,13 +506,19 @@ json = '''
 class GameApp(App):
     def build(self):
         Window.clearcolor = (0.5, 0.5, 0.5, 1)
+        self.manifest = Manifest()
         self.game = GameScreen(app=self)
         self.root = BoxLayout()
         self.more_info = MoreInfo(app=self)
         self.settings_cls = SettingsWithSidebar
         self.use_kivy_settings = False
         self.tutorial = TutorialScreen(app=self)
-        #self.use_kivy_settings = False
+        self.use_kivy_settings = False
+        try:
+            self.manifest.updateManifest()
+            self.manifest.updateSkins()
+        except Exception as e:
+            logging.warning("Manifest issue: "+ str(e))
         self.show_welcome_screen()
         return self.root
 
@@ -500,38 +526,41 @@ class GameApp(App):
         layout = BoxLayout(orientation='vertical', spacing=30, padding=30)
         title = Label(
             text="¡Asierto!",
-            font_size=TITLE_SIZE,
+            font_size=G.TITLE_SIZE,
             size_hint=(1, 0.5),
             bold=True
         )
+        title = Image(source="imgs/Asierto.png",
+                allow_stretch=True, keep_ratio=True, size_hint=(0.5, 0.5),
+                pos_hint={'center_x': 0.5, 'center_y': 0.5})
         subtitle = Label(
-            text="Clicca su due colori per scambiarli.\nScopri se hai indovinato la sequenza misteriosa!",
-            font_size=MSG_SIZE,
+            text=self.manifest.message,
+            font_size=G.MSG_SIZE,
             size_hint=(1, 0.2),
         )
         buttons = BoxLayout(orientation='horizontal', spacing=10, padding=0, size_hint=(1, 0.3))
         start_button = Button(
             text="Inizia",
-            font_size=BUTTON_SIZE,
+            font_size=G.BUTTON_SIZE,
             size_hint=(0.4, 1),
             #on_press=lambda instance: self.show_turn_limit_popup()
             on_press= lambda instance: self.start_game()
         )
         tutorial_button =Button(
             text="Tutorial",
-            font_size=BUTTON_SIZE,
+            font_size=G.BUTTON_SIZE,
             size_hint=(0.2, 1),
             on_press=lambda instance: self.tutorial.show(self.root)
         )
         info_button = Button(
             text="Info",
-            font_size=BUTTON_SIZE,
+            font_size=G.BUTTON_SIZE,
             size_hint=(0.2, 1),
             on_press=lambda instance: self.more_info.show(self.root)
         )
         settings_button = Button(
             text="Opzioni",
-            font_size=BUTTON_SIZE,
+            font_size=G.BUTTON_SIZE,
             size_hint=(0.2, 1),
             on_press=lambda instance: self.open_settings()
         )
@@ -558,7 +587,7 @@ class GameApp(App):
 
     def show_turn_limit_popup(self):
         layout = BoxLayout(orientation='vertical', spacing=30, padding=30)
-        label = Label(text="Per quanti turni vuoi giocare?", font_size=SUB_TITLE_SIZE, size_hint=(1, 0.3))
+        label = Label(text="Per quanti turni vuoi giocare?", font_size=G.TITLE_SIZE, size_hint=(1, 0.3))
         layout.add_widget(label)
 
         def set_turn_limit(limit):
@@ -571,7 +600,7 @@ class GameApp(App):
             btn = Button(
                 text=f"{limit} turni",
                 size_hint=(1, 1),
-                font_size=BUTTON_SIZE
+                font_size=G.BUTTON_SIZE
             )
             btn.bind(on_press=lambda instance, limit=limit: set_turn_limit(limit))
             button_layout.add_widget(btn)
@@ -587,7 +616,7 @@ class GameApp(App):
 
     def show_mode_selection_popup(self):
         layout = BoxLayout(orientation='vertical', spacing=30, padding=30)
-        label = Label(text="Seleziona Modalità", font_size=SUB_TITLE_SIZE, size_hint=(1, 0.3))
+        label = Label(text="Seleziona Modalità", font_size=G.TITLE_SIZE, size_hint=(1, 0.3))
         layout.add_widget(label)
 
         def start_game(with_button):
@@ -603,13 +632,13 @@ class GameApp(App):
         with_button = Button(
             text="Scambio Multiplo",
             size_hint=(1, 1),
-            font_size=BUTTON_SIZE
+            font_size=G.BUTTON_SIZE
         )
         with_button.bind(on_press=start_game(with_button=True))
         without_button = Button(
             text="Scambio Singolo",
             size_hint=(1, 1),
-            font_size=BUTTON_SIZE
+            font_size=G.BUTTON_SIZE
         )
         without_button.bind(on_press=start_game(with_button=False))
         button_layout.add_widget(without_button)
@@ -632,16 +661,21 @@ class GameApp(App):
 
     def build_config(self, config):
        config.setdefaults(
-         'Game', {'turni': "15", 'scambio': "Scambio Singolo","skin": "casuale"}
+         'Game', {'turni': "15", 'scambio': "Scambio Singolo","skin": "Casuale"}
        )
        self.config = config
 
     def build_settings(self, settings):
        from json import loads,dumps
        data = loads(json)
+       settings.register_type('options', SettingOptionsScroll)
        skin = [i for i in data if i["title"]=="Skin"][0]
-       skin["options"] = ["Casuale"] + TYPES
+       skin["options"] = ["Casuale"] + self.manifest.types
        data = dumps(data)
+       skin = self.config.get("Game","skin")
+       if skin not in self.manifest.types:
+           self.config.set("Game","skin","Casuale")
+       logging.info("skin: "+ str(self.config.get("Game","skin")))
        settings.add_json_panel('Opzioni', self.config, data=data)
 
 
