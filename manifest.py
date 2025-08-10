@@ -36,7 +36,7 @@ class Manifest:
             urllib.request.urlretrieve(url, fpath)
         except Exception as e:
             # in case of error store self.manifest as manifest.json
-            logging.warning(f"Manifest download: error on download ({e}). Aborting")
+            logging.warning(f"Manifest download: error on download {url} ({e}). Aborting")
             json.dump(self.manifest,open(fpath,"w"), indent=4)
             return
 

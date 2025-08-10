@@ -1,4 +1,8 @@
 - Change Log -
+Versione 0.1.8 RC
+- Modalità schermo intero
+- Fix selezione si resetta tra partite
+- Fix Ritorno al Menu principale durante l'animazione
 
 Versione 0.1.7
 - Icona applicazione

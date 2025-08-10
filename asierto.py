@@ -23,7 +23,7 @@ from kivy.animation import Animation
 import random
 import os, json, shutil
 
-__version__ = "0.1.7"
+__version__ = "0.1.8"
 
 import globals as G
 from manifest import Manifest
@@ -373,6 +373,9 @@ class GameScreen:
             #Clock.schedule_once(lambda dt: self.complete_swap(), 0.4)
 
     def complete_swap(self):
+        if not self.selezione:
+            # selezione was resetted before the end of the animation: abort.
+            return
         self.oggetti[self.selezione[0]], self.oggetti[self.selezione[1]] = self.oggetti[self.selezione[1]], \
         self.oggetti[self.selezione[0]]
 
@@ -427,6 +430,7 @@ class GameScreen:
         # enable buttons
         for bottone in self.bottoni:
             bottone.enable()
+            bottone.showBorder(False)
         # disconnect images
         if include_images:
             for btn in self.bottoni:
@@ -511,7 +515,6 @@ class GameApp(App):
         self.root = BoxLayout()
         self.more_info = MoreInfo(app=self)
         self.settings_cls = SettingsWithSidebar
-        self.use_kivy_settings = False
         self.tutorial = TutorialScreen(app=self)
         self.use_kivy_settings = False
         try:
@@ -679,5 +682,47 @@ class GameApp(App):
        settings.add_json_panel('Opzioni', self.config, data=data)
 
 
+def fullscreen_fix(cls):
+    # Save original build if exists
+    original_func = getattr(cls, 'build', None)
+
+    def force_redraw(self, dt, attempt_num):
+        if self.root:
+            # Force canvas update
+            self.root.canvas.ask_update()
+
+            logging.warning(f"[AndroidFullscreenFix] Forced redraw #{attempt_num} at {dt:.2f}s")
+
+    def schedule_all_redraws(self, dt):
+        logging.warning("[AndroidFullscreenFix] Now scheduling all redraws...")
+
+        # Now schedule the actual redraws
+        for i in range(2):
+            Clock.schedule_once(
+                lambda dt, num=i: force_redraw(self, dt, num+1),
+                0.5 * i
+            )
+
+    def new_func(self):
+        # Call original build
+        root = original_func(self) if original_func else None
+
+        logging.warning("[AndroidFullscreenFix] Build completed, scheduling redraw scheduler...")
+
+        # Schedule the scheduler (will run in main loop)
+        Clock.schedule_once(lambda dt: schedule_all_redraws(self, dt), 0)
+
+        return root
+
+    # Replace build method
+    cls.build = new_func
+
+    # Add utility methods to class
+    cls.force_redraw = force_redraw
+    cls.schedule_all_redraws = schedule_all_redraws
+
+    return cls
+
+
 if __name__ == "__main__":
-    GameApp().run()
+    fullscreen_fix(GameApp)().run()
