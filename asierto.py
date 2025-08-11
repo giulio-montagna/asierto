@@ -23,7 +23,7 @@ from kivy.animation import Animation
 import random
 import os, json, shutil
 
-__version__ = "0.1.8"
+__version__ = "0.1.9"
 
 import globals as G
 from manifest import Manifest
@@ -685,11 +685,13 @@ class GameApp(App):
 def fullscreen_fix(cls):
     # Save original build if exists
     original_func = getattr(cls, 'build', None)
+    original_resume = getattr(cls, 'on_resume',None)
 
     def force_redraw(self, dt, attempt_num):
         if self.root:
             # Force canvas update
             self.root.canvas.ask_update()
+            Window.update_viewport()
 
             logging.warning(f"[AndroidFullscreenFix] Forced redraw #{attempt_num} at {dt:.2f}s")
 
@@ -702,6 +704,14 @@ def fullscreen_fix(cls):
                 lambda dt, num=i: force_redraw(self, dt, num+1),
                 0.5 * i
             )
+
+    def new_resume(self):
+        # Call original on_resume
+        results = original_resume(self) if original_resume else True
+
+        logging.warning("[AndroidFullscreenFix] Resuming, calling redraw")
+        Clock.schedule_once(lambda dt: schedule_all_redraws(self, dt), 0)
+        return results
 
     def new_func(self):
         # Call original build
@@ -720,6 +730,7 @@ def fullscreen_fix(cls):
     # Add utility methods to class
     cls.force_redraw = force_redraw
     cls.schedule_all_redraws = schedule_all_redraws
+    cls.on_resume = new_resume
 
     return cls
 

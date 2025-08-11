@@ -1,4 +1,7 @@
 - Change Log -
+Versione 0.1.9 RC
+- Fix schermo nero quando la app riprende
+
 Versione 0.1.8 RC
 - Modalità schermo intero
 - Fix selezione si resetta tra partite
