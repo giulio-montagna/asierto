@@ -13,6 +13,7 @@ from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.popup import Popup
 from kivy.uix.carousel import Carousel
+from kivy.uix.videoplayer import VideoPlayer
 from kivy.uix.settings import SettingsWithSidebar
 from kivy.input.providers.mouse import MouseMotionEvent
 from kivy.core.window import Window
@@ -23,11 +24,15 @@ from kivy.animation import Animation
 import random
 import os, json, shutil
 
-__version__ = "0.1.9"
+__version__ = "0.1.10"
 
 import globals as G
 from manifest import Manifest
 from settingOptionsScroll import SettingOptionsScroll
+
+from kivy.core.text import LabelBase
+LabelBase.register(name='fa',
+                   fn_regular='fonts/Font Awesome 7 Free-Solid-900.otf')
 
 def remove_widget(widget: Widget) -> bool:
     """remove widget from its parent if any"""
@@ -164,6 +169,53 @@ class MoreInfo:
     def show(self, root: BoxLayout):
         root.clear_widgets()
         root.add_widget(self.layout)
+
+class VideoTutorialScreen():
+    def __init__(self, app):
+        self.app = app
+        self.screen =  FloatLayout()
+
+        self.video = VideoPlayer(source="videos/Asierto Tutorial.mp4")
+        self.video.state = "stop"
+        self.video.options = {"eos":"stop"}
+        self.video.allow_stretch = True
+        self.screen.add_widget(self.video)
+
+        self.prev =  Button(
+            font_name="fa",
+            font_size= 64,
+            background_normal="",
+            background_down="",
+            color=(0.6,0.6,0.6,1),
+            background_color=(0,0,0,0),
+            text="\uf359",
+            size_hint=(0.1, 0.15),  # dimensione relativa
+            pos_hint={'right': 1, 'top': 1},  # allineato a destra in alto
+            on_press=self.start_game,
+        )
+        controlLayout = self.video.children[0]
+        controlBar = list(reversed(controlLayout.children))
+        controlBar.insert(0,self.prev)
+        controlBar.insert(1,Widget(width=5,size_hint_x=None))
+
+        controlLayout.clear_widgets()
+        for widget in controlBar:
+                controlLayout.add_widget(widget)
+
+
+    def start_game(self, *args):
+        # Logica per iniziare il gioco
+        self.video.position = 0
+        self.video.play = False
+        Window.clearcolor = (0.5, 0.5, 0.5, 1)
+        self.app.show_welcome_screen()
+        pass
+
+    def show(self, root: BoxLayout):
+        Window.clearcolor = (0,0,0,1)
+        root.clear_widgets()
+        self.video.play = True
+        root.add_widget(self.screen)
 
 class TutorialScreen():
     def __init__(self, app):
@@ -515,7 +567,7 @@ class GameApp(App):
         self.root = BoxLayout()
         self.more_info = MoreInfo(app=self)
         self.settings_cls = SettingsWithSidebar
-        self.tutorial = TutorialScreen(app=self)
+        self.tutorial = VideoTutorialScreen(app=self)
         self.use_kivy_settings = False
         try:
             self.manifest.updateManifest()
@@ -526,7 +578,22 @@ class GameApp(App):
         return self.root
 
     def show_welcome_screen(self):
+        float = FloatLayout()
         layout = BoxLayout(orientation='vertical', spacing=30, padding=30)
+
+        exit =  Button(
+            font_name="fa",
+            font_size= 64,
+            background_normal="",
+            background_down="",
+            color=(0.4,0.4,0.4,1),
+            background_color=(0,0,0,0),
+            text="\uf057",
+            size_hint=(0.1, 0.15),  # dimensione relativa
+            pos_hint={'right': 1, 'top': 1},  # allineato a destra in alto
+            on_press=lambda *a,**k:self.stop(),
+        )
+
         title = Label(
             text="¡Asierto!",
             font_size=G.TITLE_SIZE,
@@ -574,8 +641,10 @@ class GameApp(App):
         layout.add_widget(title)
         layout.add_widget(subtitle)
         layout.add_widget(buttons)
+        float.add_widget(layout)
+        float.add_widget(exit)
         self.root.clear_widgets()
-        self.root.add_widget(layout)
+        self.root.add_widget(float)
 
     def start_game(self):
         limit = int(self.config.get("Game","turni"))
