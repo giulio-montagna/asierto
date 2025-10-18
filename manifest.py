@@ -4,6 +4,13 @@ import urllib.request
 import logging
 import json
 import shutil
+import requests
+
+def urlretrieve(url,fpath):
+    response = requests.get(url, stream=True)
+    with open(fpath, mode="wb") as file:
+        for chunk in response.iter_content(chunk_size=10 * 1024):
+            file.write(chunk)
 
 class Manifest:
     BASE_URL="https://dotto.fxiv.net/asierto/"
@@ -20,7 +27,7 @@ class Manifest:
         url = f"{self.BASE_URL}imgs/skins/{type}/{color}.png"
         url = url.replace(" ","%20")
         try:
-            urllib.request.urlretrieve(url, fpath)
+            urlretrieve(url, fpath)
             return fpath
         except Exception as e:
             logging.warning(f"Download Skin:  <{type}:{color}> ({url}) Download error: {e}")
@@ -29,11 +36,11 @@ class Manifest:
             return None
 
     def updateManifest(self):
-        url = f"{Manifest.BASE_URL}/manifest.json"
+        url = f"{Manifest.BASE_URL}manifest.json"
         fpath = "manifest.json"
         # download manifest
         try:
-            urllib.request.urlretrieve(url, fpath)
+            urlretrieve(url, fpath)
         except Exception as e:
             # in case of error store self.manifest as manifest.json
             logging.warning(f"Manifest download: error on download {url} ({e}). Aborting")
@@ -56,9 +63,27 @@ class Manifest:
         logging.info(f"Updating manifest: {manifest}")
         self.manifest = manifest
 
-    def updateSkins(self):
+    def mustUpdate(self):
+        """returns how many skins to update"""
+        count = 0
         for skin in self.manifest["skins"]:
+            try:
+                hash = self.hashSkin(skin)
+            except Exception as e:
+                # count as failed hashing
+                hash = ""
+            # add count if mis-hash
+            if hash != self.manifest["skins"][skin]:
+                count += 1
+        return count
+
+    def updateSkins(self,cb=None):
+        for skin in self.manifest["skins"]:
+            if cb is not None:
+                cb("downloading",skin)
             self.downloadSkin(skin)
+            if cb is not None:
+                cb("downloaded",skin)
 
     def downloadSkin(self,skin):
         try:

@@ -1,5 +1,7 @@
 import logging
 
+from threading import Thread
+
 from kivy.config import Config
 
 from kivy.app import App
@@ -18,13 +20,16 @@ from kivy.uix.settings import SettingsWithSidebar
 from kivy.input.providers.mouse import MouseMotionEvent
 from kivy.core.window import Window
 from kivy.core.audio import SoundLoader
-from kivy.clock import Clock
+from kivy.clock import Clock, mainthread
 from kivy.graphics import Color, Line
 from kivy.animation import Animation
+from kivy.storage.jsonstore import JsonStore
 import random
 import os, json, shutil
+import uuid
+import requests
 
-__version__ = "0.1.10"
+__version__ = "0.1.11"
 
 import globals as G
 from manifest import Manifest
@@ -40,20 +45,6 @@ def remove_widget(widget: Widget) -> bool:
         widget.parent.remove_widget(widget)
         return True
     return False
-
-def scrollifyLabel(label,**scroll):
-    from kivy.graphics import Color, Rectangle
-
-    scroll= {"size_hint":(1, None)}|scroll
-    root = ScrollView(**scroll)
-    layout = BoxLayout(size_hint_y=None,size_hint_x=1)
-    layout.bind(minimum_height=layout.setter('height'))
-    layout.bind(width=lambda i,v:setattr(label,'text_size',[v,label.text_size[1]]))
-
-    label.bind(texture_size=lambda instance, value: setattr(instance, 'height', value[1]))
-    layout.add_widget(label)
-    root.add_widget(layout)
-    return root
 
 class ImageButton(FloatLayout):
     def __init__(self, image, **kwargs):
@@ -119,56 +110,68 @@ class ImageButton(FloatLayout):
         else:
             self.canvas.after.clear()
 
-class MoreInfo:
-    def __init__(self, app: "GameApp"):
+class ManifestManager(FloatLayout):
+    def __init__(self,app,manifest,**kwargs):
+        super(ManifestManager,self).__init__(**kwargs)
         self.app = app
-        self.layout = BoxLayout(orientation='vertical', spacing=10, padding=10)
-        self.subtitle = Label(
-            text="¡Asierto! versione " + __version__,
-            font_size=G.TITLE_SIZE,
-            size_hint=(1, 0.1)
-        )
-        text = open("resources/changelog.txt",encoding="utf-8").read()
-        text += "\n CREDITS:\n"
-        text +=open("resources/credits.txt",encoding="utf-8").read()
-        #self.changelogScroll = WrapScrollView(do_scroll_x=False,do_scroll_y=True,size_hint=(1, 0.4))
-        self.changelog = Label(
-            #text=open("resources/changelog.txt",encoding="utf-8").read(),
-            text=text,
-            font_size=G.TEXT_SIZE,
-            #size_hint=(1, 0.4),
-            size_hint_y=None,
-            size_hint_x=1,
-            #readonly=True,
-        )
-        #self.changelogScroll.add_widget(self.changelog)
-        self.changelogScroll = scrollifyLabel(self.changelog,size_hint=(1, 0.8),)
-        self.creditsLabel = Label(
-            text=open("resources/credits.txt",encoding="utf-8").read(),
-            font_size=G.TEXT_SIZE,
-            #size_hint=(1, 0.4),
-            #readonly=True,
-            size_hint_y=None,
-            size_hint_x=1,
-        )
-        self.credits = scrollifyLabel(self.creditsLabel,size_hint=(1, 0.4),)
-        self.back_button = Button(
-            text="Torna al menu principale",
-            font_size=G.BUTTON_SIZE,
-            size_hint=(1, 0.1),
-            on_press=lambda instance: self.app.show_welcome_screen()
-        )
-        self.layout.add_widget(self.subtitle)
-        self.layout.add_widget(self.changelogScroll)
-        #self.layout.add_widget(self.credits)
-        self.layout.add_widget(self.back_button)
-        #self.credits.disabled = True
-        #self.changelog.disabled = True
+        self.manifest = manifest
+
+    def show(self, root: BoxLayout=None):
+        try:
+            self.manifest.updateManifest()
+        except Exception as e:
+            logging.warning("Manifest issue: "+ str(e))
+        if self.manifest.mustUpdate() == 0:
+                self.app.show_welcome_screen()
+                return
+        self.showMe()
+        Thread(target=self.updateManfest).start()
+
+    def showMe(self):
+        root = self.app.root
+        root.clear_widgets()
+        root.add_widget(self)
+
+    def updateManfest(self):
+        try:
+            self.manifest.updateSkins(self.update)
+        except Exception as e:
+            logging.warning("Manifest issue: "+ str(e))
+
+
+    @mainthread
+    def update(self, action, skin):
+        if action == "downloading":
+            self.ids.message.text = f"Download... {skin.capitalize()}"
+            return
+        current = list(self.manifest.manifest["skins"]).index(skin) + 1
+        total = len(self.manifest.manifest["skins"])
+        value = current * 100 / total
+        anim = Animation(value=value, duration=2)
+        anim.start(self.ids.progress_bar)
+        if current == total:
+            self.app.show_welcome_screen()
+
+class MoreInfo(BoxLayout):
+
+    def __init__(self, app, **kwargs):
+        super(MoreInfo,self).__init__(**kwargs)
+        self.app = app
+        changelog = open("resources/changelog.txt",encoding="utf-8").read()
+        credits =open("resources/credits.txt",encoding="utf-8").read()
+        print (self.ids)
+
+        self.ids["version"].text = f"¡Asierto! versione {__version__}"
+        self.ids["changelog"].text = changelog + "\n\nCREDITS:\n" + credits
+
+    def on_back(self):
+        if self.app:
+            self.app.show_welcome_screen()
 
 
     def show(self, root: BoxLayout):
         root.clear_widgets()
-        root.add_widget(self.layout)
+        root.add_widget(self)
 
 class VideoTutorialScreen():
     def __init__(self, app):
@@ -217,95 +220,6 @@ class VideoTutorialScreen():
         self.video.play = True
         root.add_widget(self.screen)
 
-class TutorialScreen():
-    def __init__(self, app):
-        self.app = app
-
-        # Creo il carousel
-        carousel = Carousel(loop=False)
-
-        # Definisco le slide del tutorial
-        tutorial_data = [
-            {
-                'image': 'imgs/tutorial/tutorial1.png',
-                'title': '',
-                'text': ''
-            },
-            {
-                'image': 'imgs/tutorial/tutorial2.png',
-                'title': '',
-                'text': ''
-            },
-            {
-                'image': 'imgs/tutorial/tutorial3.png',
-                'title': '',
-                'text': ''
-            }
-        ]
-
-        # Aggiungo le slide al carousel
-        for slide in tutorial_data:
-            slide_layout = FloatLayout()#BoxLayout(orientation='vertical', padding=20, spacing=10)
-
-            if slide['image']:
-                slide_image = Image(
-                    source=slide['image'],
-                    allow_stretch=True,
-                    keep_ratio=True
-                )
-                slide_layout.add_widget(slide_image)
-
-            if slide == tutorial_data[0]:
-                prev = Button(
-                    text="Indietro",
-                    font_size=G.TEXT_SIZE,
-                    size_hint=(0.1, 0.15),  # dimensione relativa
-                    pos_hint={'x': 0, 'bottom': 0},  # allineato a sinistra in basso
-                    on_press=self.start_game
-                )
-            else:
-                prev = Button(
-                    text="Indietro",
-                    font_size=G.TEXT_SIZE,
-                    size_hint=(0.1, 0.15),  # dimensione relativa
-                    pos_hint={'x': 0, 'bottom': 0},  # allineato a sinistra in basso
-                    on_press=lambda *a: carousel.load_previous()
-                )
-            slide_layout.add_widget(prev)
-
-            if slide == tutorial_data[-1]:
-                next = Button(
-                    text="Ok",
-                    font_size=G.TEXT_SIZE,
-                    size_hint=(0.1, 0.15),
-                    pos_hint={'right': 1, 'bottom': 0},
-                    on_press=self.start_game
-                )
-            else:
-                next = Button(
-                    text="Avanti",
-                    font_size=G.TEXT_SIZE,
-                    size_hint=(0.1, 0.15),
-                    pos_hint={'right': 1, 'bottom': 0},
-                    on_press=lambda *a: carousel.load_next()
-                )
-            slide_layout.add_widget(next)
-
-            carousel.add_widget(slide_layout)
-
-        self.carousel = carousel
-
-    def start_game(self, *args):
-        # Logica per iniziare il gioco
-        self.app.show_welcome_screen()
-
-    def show(self, root: BoxLayout):
-        root.clear_widgets()
-        self.carousel.index = 0
-        root.add_widget(self.carousel)
-
-
-
 class GameScreen:
     def __init__(self, app,type_=None):
         self.app = app
@@ -336,6 +250,7 @@ class GameScreen:
             return {colore: ImageButton.makeImage(skin.lower(), colore) for colore in self.oggetti}
         self.immagini = {colore: ImageButton.makeImage(skin.lower(), colore) for colore in self.oggetti}
         self.aggiorna_bottoni()
+        self.current_skin = skin
 
     def reset_game_variables(self):
         self.soluzione = self.oggetti[:]
@@ -448,6 +363,8 @@ class GameScreen:
             self.feedback_label.text = f"¡Felicidades! Hai vinto! (Turni rimasti: {self.turn_limit - 1})"
             if self.victory_sound:
                 self.victory_sound.play()
+            self.app.user.storeGame(result="win",startTime= self.start_time, totalTurns=self.total_turns, turnLimit=self.turn_limit,
+                                    mode=self.current_mode, skin=self.current_skin)
             self.replay()
             return
         else:
@@ -457,6 +374,8 @@ class GameScreen:
             self.turn_limit -= 1
         if self.turn_limit <= 0:
             self.feedback_label.text = "Gioco terminato! Limite di turni raggiunto."
+            self.app.user.storeGame(result="lost",startTime=self.start_time, totalTurns=self.total_turns, turnLimit=self.turn_limit,
+                                    mode=self.current_mode, skin=self.current_skin)
             self.replay()
             return
 
@@ -502,8 +421,8 @@ class GameScreen:
         self.use_enter_button = True
         self.reset(include_images=False)
         self.show_enter()
-        self.enter_btn.size_hint[0] = 0.8
-        self.replay_btn.size_hint[0] = 0.2
+        self.enter_btn.size_hint[0] = 0.7
+        self.replay_btn.size_hint[0] = 0.3
         self.show()
 
     def start_without_button(self):
@@ -517,6 +436,8 @@ class GameScreen:
 
     def set_turn_limit(self,limit):
         self.turn_limit = limit
+        self.total_turns = limit
+        self.start_time = str(datetime.datetime.now())
 
     def replay(self):
         for bottone,colore in zip(self.bottoni,self.soluzione):
@@ -558,8 +479,35 @@ json = '''
  }
 ]
 '''
+import datetime
+from kivy.network.urlrequest import UrlRequest
+class User:
+    def __init__(self,app):
+        self.app = app
+        self.gamesStore = JsonStore('games.json')
+        if not G.store.exists('user'):
+            G.store.put("user",id=str(uuid.uuid4()))
+        self.id = G.store.get("user")["id"]
+
+    def storeGame(self,**data):
+        import json
+        now = str(datetime.datetime.now())
+        utcnow = str(datetime.datetime.utcnow())
+        gameid = str(uuid.uuid4())
+        payload = dict(id=gameid,time=now,utcTime=utcnow,user=self.id,**data)
+        self.gamesStore.put(gameid,**payload)
+
+        headers = {'Content-type': 'application/json',
+                  'Accept': 'application/json'}
+        url = G.system.get("analytics")["url"]
+        req = UrlRequest(url,
+                req_headers=headers,
+                req_body=json.dumps(payload).encode())
+
+
 
 class GameApp(App):
+    G = G
     def build(self):
         Window.clearcolor = (0.5, 0.5, 0.5, 1)
         self.manifest = Manifest()
@@ -568,14 +516,11 @@ class GameApp(App):
         self.more_info = MoreInfo(app=self)
         self.settings_cls = SettingsWithSidebar
         self.tutorial = VideoTutorialScreen(app=self)
+        self.manifestManager = ManifestManager(self,self.manifest)
         self.use_kivy_settings = False
-        try:
-            self.manifest.updateManifest()
-            self.manifest.updateSkins()
-        except Exception as e:
-            logging.warning("Manifest issue: "+ str(e))
-        self.show_welcome_screen()
-        return self.root
+        self.manifestManager.show(self.root)
+        self.user = User(app=self)
+
 
     def show_welcome_screen(self):
         float = FloatLayout()
@@ -583,7 +528,7 @@ class GameApp(App):
 
         exit =  Button(
             font_name="fa",
-            font_size= 64,
+            font_size= G.MID_TITLE_SIZE,
             background_normal="",
             background_down="",
             color=(0.4,0.4,0.4,1),
@@ -650,6 +595,7 @@ class GameApp(App):
         limit = int(self.config.get("Game","turni"))
         self.game.set_turn_limit(limit)
         with_button = self.config.get("Game","scambio") != "Scambio Singolo"
+        self.game.current_mode = self.config.get("Game","scambio")
         if with_button:
             self.game.start_with_button()
         else:
@@ -805,4 +751,7 @@ def fullscreen_fix(cls):
 
 
 if __name__ == "__main__":
-    fullscreen_fix(GameApp)().run()
+    import asyncio
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(
+        fullscreen_fix(GameApp)().async_run(async_lib='asyncio'))

@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 
+system.json
+buildozer.spec
+
 # Virtual environment
 venv/
 

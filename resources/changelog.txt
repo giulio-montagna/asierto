@@ -1,4 +1,13 @@
 - Change Log -
+Versione 0.1.11
+- Schermata caricamento skin
+- Bug schermo nero skin
+
+Versione 0.1.10
+- Skin aggiornabili
+- Tasto esci nel menu principale
+- Video tutorial integrato
+
 Versione 0.1.9 RC
 - Fix schermo nero quando la app riprende
 

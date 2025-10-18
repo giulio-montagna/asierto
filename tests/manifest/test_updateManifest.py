@@ -10,7 +10,7 @@ class TestUpdateManifest(unittest.TestCase):
     @patch('json.dump')
     @patch('json.load')
     @patch('manifest.Manifest.__init__')
-    @patch('urllib.request.urlretrieve')
+    @patch('manifest.urlretrieve')
     def test_download_success(self, mock_urlretrieve,mock_init,
                                     mock_jsonload,mock_jsondump,
                                     mock_open):
@@ -30,7 +30,7 @@ class TestUpdateManifest(unittest.TestCase):
 
 
         # Assert: download called properly
-        expected_url = f"{Manifest.BASE_URL}/manifest.json"
+        expected_url = f"{Manifest.BASE_URL}manifest.json"
         expected_fpath = "manifest.json"
         mock_urlretrieve.assert_called_once_with(expected_url,expected_fpath)
         # Assert:  manifest updated
@@ -42,7 +42,7 @@ class TestUpdateManifest(unittest.TestCase):
     @patch('json.dump')
     @patch('json.load')
     @patch('manifest.Manifest.__init__')
-    @patch('urllib.request.urlretrieve')
+    @patch('manifest.urlretrieve')
     def test_download_failed(self, mock_urlretrieve,mock_init,
                                     mock_jsonload,mock_jsondump,
                                     mock_open):
@@ -63,7 +63,7 @@ class TestUpdateManifest(unittest.TestCase):
 
 
         # Assert: download called properly
-        expected_url = f"{Manifest.BASE_URL}/manifest.json"
+        expected_url = f"{Manifest.BASE_URL}manifest.json"
         expected_fpath = "manifest.json"
         mock_urlretrieve.assert_called_once_with(expected_url,expected_fpath)
         # Assert:  manifest unchanged
@@ -75,7 +75,7 @@ class TestUpdateManifest(unittest.TestCase):
     @patch('json.dump')
     @patch('json.load')
     @patch('manifest.Manifest.__init__')
-    @patch('urllib.request.urlretrieve')
+    @patch('manifest.urlretrieve')
     def test_downloaded_corrupted_file(self, mock_urlretrieve,mock_init,
                                     mock_jsonload,mock_jsondump,
                                     mock_open):
@@ -96,7 +96,7 @@ class TestUpdateManifest(unittest.TestCase):
 
 
         # Assert: download called properly
-        expected_url = f"{Manifest.BASE_URL}/manifest.json"
+        expected_url = f"{Manifest.BASE_URL}manifest.json"
         expected_fpath = "manifest.json"
         mock_urlretrieve.assert_called_once_with(expected_url,expected_fpath)
         # Assert:  manifest unchanged
@@ -109,7 +109,7 @@ class TestUpdateManifest(unittest.TestCase):
     @patch('json.dump')
     @patch('json.load')
     @patch('manifest.Manifest.__init__')
-    @patch('urllib.request.urlretrieve')
+    @patch('manifest.urlretrieve')
     def test_downloaded_wrong_json(self, mock_urlretrieve,mock_init,
                                     mock_jsonload,mock_jsondump,
                                     mock_open):
@@ -129,7 +129,7 @@ class TestUpdateManifest(unittest.TestCase):
 
 
         # Assert: download called properly
-        expected_url = f"{Manifest.BASE_URL}/manifest.json"
+        expected_url = f"{Manifest.BASE_URL}manifest.json"
         expected_fpath = "manifest.json"
         mock_urlretrieve.assert_called_once_with(expected_url,expected_fpath)
         # Assert:  manifest unchanged
